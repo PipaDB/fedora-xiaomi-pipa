@@ -92,9 +92,19 @@ make_image() {
     arch-chroot $image_mnt kernel-install add "$(basename "$kernel_path")" "${kernel_path}/vmlinuz" --verbose
 
     echo "### Enabling system services"
-    arch-chroot $image_mnt systemctl enable NetworkManager sshd systemd-resolved
-    arch-chroot $image_mnt systemctl enable qbootctl-mark-bootable bootmac-bluetooth
-    arch-chroot $image_mnt systemctl disable iio-sensor-proxy
+    # Enable services individually to identify failures
+    for service in NetworkManager sshd systemd-resolved qbootctl-mark-bootable bootmac-bluetooth; do
+        echo "-> Enabling $service..."
+        if ! arch-chroot $image_mnt systemctl enable "$service"; then
+            echo "ERROR: Failed to enable $service"
+            echo "Debug info: Checking if unit file exists for $service..."
+            ls -l "$image_mnt/usr/lib/systemd/system/$service.service" "$image_mnt/etc/systemd/system/$service.service" 2>/dev/null || echo "  Unit file not found in standard locations."
+            exit 1
+        fi
+    done
+
+    echo "-> Disabling iio-sensor-proxy..."
+    arch-chroot $image_mnt systemctl disable iio-sensor-proxy || echo "Warning: Failed to disable iio-sensor-proxy (it might not be installed)"
 
     echo "### Disabling systemd-firstboot"
     arch-chroot $image_mnt rm -f /usr/lib/systemd/system/sysinit.target.wants/systemd-firstboot.service
