@@ -93,12 +93,13 @@ make_image() {
 
     echo "### Enabling system services"
     # Enable services individually to identify failures
-    for service in NetworkManager sshd systemd-resolved qbootctl-mark-bootable bootmac-bluetooth; do
+    for service in NetworkManager sshd systemd-resolved qbootctl.service bootmac-bluetooth; do
         echo "-> Enabling $service..."
         if ! arch-chroot $image_mnt systemctl enable "$service"; then
             echo "ERROR: Failed to enable $service"
             echo "Debug info: Checking if unit file exists for $service..."
-            ls -l "$image_mnt/usr/lib/systemd/system/$service.service" "$image_mnt/etc/systemd/system/$service.service" 2>/dev/null || echo "  Unit file not found in standard locations."
+            service_name="${service%.service}"
+            ls -l "$image_mnt/usr/lib/systemd/system/$service_name.service" "$image_mnt/etc/systemd/system/$service_name.service" 2>/dev/null || echo "  Unit file not found in standard locations."
             exit 1
         fi
     done
