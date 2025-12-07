@@ -6,7 +6,7 @@ mkosi_rootfs='mkosi.rootfs'
 image_dir='images'
 image_mnt='mnt_image'
 date=$(date +%Y%m%d)
-image_name=pipa-fedora-${date}-1
+image_name=pipa-fedora-sway-${date}-1
 
 # Hardcoded UUID for root filesystem (must match installer_data.json + boot cmdline)
 ROOTFS_UUID="cbc96327-b5ac-413c-bc6c-fb701d576972"
@@ -92,9 +92,20 @@ make_image() {
     arch-chroot $image_mnt kernel-install add "$(basename "$kernel_path")" "${kernel_path}/vmlinuz" --verbose
 
     echo "### Enabling system services"
-    arch-chroot $image_mnt systemctl enable NetworkManager sshd systemd-resolved
-    arch-chroot $image_mnt systemctl enable bootmac-bluetooth
-    arch-chroot $image_mnt systemctl disable iio-sensor-proxy
+    # Enable services individually to identify failures
+    for service in NetworkManager sshd systemd-resolved qbootctl.service bootmac-bluetooth; do
+        echo "-> Enabling $service..."
+        if ! arch-chroot $image_mnt systemctl enable "$service"; then
+            echo "ERROR: Failed to enable $service"
+            echo "Debug info: Checking if unit file exists for $service..."
+            service_name="${service%.service}"
+            ls -l "$image_mnt/usr/lib/systemd/system/$service_name.service" "$image_mnt/etc/systemd/system/$service_name.service" 2>/dev/null || echo "  Unit file not found in standard locations."
+            exit 1
+        fi
+    done
+
+    echo "-> Disabling iio-sensor-proxy..."
+    arch-chroot $image_mnt systemctl disable iio-sensor-proxy || echo "Warning: Failed to disable iio-sensor-proxy (it might not be installed)"
 
     echo "### Disabling systemd-firstboot"
     arch-chroot $image_mnt rm -f /usr/lib/systemd/system/sysinit.target.wants/systemd-firstboot.service
