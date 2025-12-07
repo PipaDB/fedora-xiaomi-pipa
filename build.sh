@@ -6,7 +6,7 @@ mkosi_rootfs='mkosi.rootfs'
 image_dir='images'
 image_mnt='mnt_image'
 date=$(date +%Y%m%d)
-image_name=pipa-fedora-gnome-kde-${date}-1
+image_name=pipa-fedora-kde-${date}-1
 
 # Hardcoded UUID for root filesystem (must match installer_data.json + boot cmdline)
 ROOTFS_UUID="cbc96327-b5ac-413c-bc6c-fb701d576972"
